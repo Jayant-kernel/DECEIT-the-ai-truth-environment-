@@ -11,3 +11,5 @@ build/
 .pytest_cache/
 .DS_Store
 *.ipynb_checkpoints/
+grader_cache.json
+grader_cache.tmp

@@ -1,26 +1,21 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, field_validator, ConfigDict
+from openenv.core.env_server import Action, Observation, State
+from pydantic import field_validator
 
 
-# TODO Phase 2: switch to openenv.core.env_server base classes (Action/Observation/State) once FastAPI server is wired up
-class DeceitObservation(BaseModel):
+class DeceitObservation(Observation):
     """What the agent sees each step."""
 
-    model_config = ConfigDict(frozen=True)
-
-    question: str
+    question: str = ""
     context: list[str] = []
     turn_index: int = 0
     max_turns: int = 3
     level: int = 1
 
 
-# TODO Phase 2: switch to openenv.core.env_server base classes (Action/Observation/State) once FastAPI server is wired up
-class DeceitAction(BaseModel):
+class DeceitAction(Action):
     """What the agent produces each step."""
-
-    model_config = ConfigDict(frozen=True)
 
     reasoning: str
     answer: str = ""
@@ -35,14 +30,9 @@ class DeceitAction(BaseModel):
         return v
 
 
-# TODO Phase 2: switch to openenv.core.env_server base classes (Action/Observation/State) once FastAPI server is wired up
-class DeceitState(BaseModel):
+class DeceitState(State):
     """What the environment tracks internally — never sent to agent."""
 
-    model_config = ConfigDict(frozen=False)
-
-    episode_id: str | None = None
-    step_count: int = 0
     level: int = 1
     ground_truth: str = ""
     current_question_id: str = ""
