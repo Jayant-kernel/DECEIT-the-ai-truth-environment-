@@ -1,4 +1,14 @@
-"""Level 1 Deceit environment — factual QA, single-turn, no adversary."""
+"""Level 1 Deceit environment — factual QA, multi-turn, no adversary.
+
+Episode structure (max_turns=3):
+  - Each step where is_final=False: agent pays a -0.05 step penalty and gets
+    their own reasoning appended to the next observation's context.
+  - When is_final=True OR step_count >= max_turns: episode ends, full reward
+    (correctness + calibration) is returned.
+
+This multi-turn design gives GRPO meaningful trajectory length and teaches the
+model to "think more when uncertain" — the core Deceit behavior.
+"""
 
 from __future__ import annotations
 
@@ -17,6 +27,9 @@ from deceit_env.server.grader import Grader
 _DEFAULT_DATASET = (
     pathlib.Path(__file__).parent.parent / "data" / "level1.jsonl"
 )
+
+STEP_PENALTY = -0.05
+MAX_TURNS = 3
 
 
 def compute_reward(
@@ -39,10 +52,11 @@ def compute_reward(
 
 
 class DeceitEnvironment(Environment[DeceitAction, DeceitObservation, DeceitState]):
-    """OpenEnv-compliant Level 1 environment for the Deceit project.
+    """OpenEnv-compliant multi-turn environment for the Deceit project.
 
-    Single-turn episodes: one question, one answer, one reward.
-    No distractors, no adversary, no consistency signal (Phase 4+).
+    Level 1: factual QA with no distractors or adversary.
+    Up to max_turns=3 steps per episode. Each non-final step costs a small
+    step penalty and feeds the agent's reasoning back as context.
     """
 
     def __init__(
@@ -58,6 +72,7 @@ class DeceitEnvironment(Environment[DeceitAction, DeceitObservation, DeceitState
         )
         self._rng = random.Random(seed)
         self._state: DeceitState = DeceitState()
+        self._current_question: str = ""
 
     # ------------------------------------------------------------------
     # OpenEnv interface
@@ -74,6 +89,7 @@ class DeceitEnvironment(Environment[DeceitAction, DeceitObservation, DeceitState
             self._rng = random.Random(seed)
 
         question_row = self._rng.choice(self._dataset)
+        self._current_question = question_row["question"]
         self._state = DeceitState(
             episode_id=episode_id or str(uuid.uuid4()),
             step_count=0,
@@ -81,12 +97,14 @@ class DeceitEnvironment(Environment[DeceitAction, DeceitObservation, DeceitState
             ground_truth=question_row["ground_truth"],
             current_question_id=question_row["id"],
             episode_rewards=[],
+            prior_reasoning=[],
+            max_turns=MAX_TURNS,
         )
         return DeceitObservation(
-            question=question_row["question"],
+            question=self._current_question,
             context=[],
             turn_index=0,
-            max_turns=1,
+            max_turns=MAX_TURNS,
             level=1,
         )
 
@@ -96,9 +114,35 @@ class DeceitEnvironment(Environment[DeceitAction, DeceitObservation, DeceitState
         timeout_s: Optional[float] = None,
         **kwargs,
     ) -> DeceitObservation:
-        """Grade the action and return observation with reward embedded."""
-        self._state.step_count += 1
+        """Process one agent turn.
 
+        Non-final step: pay step penalty, append reasoning to context, continue.
+        Final step (is_final=True or turn limit reached): compute full reward.
+        """
+        self._state.step_count += 1
+        forced_final = self._state.step_count >= self._state.max_turns
+        is_terminal = action.is_final or forced_final
+
+        if not is_terminal:
+            # Thinking turn: no grading, just step penalty
+            self._state.prior_reasoning.append(action.reasoning)
+            self._state.episode_rewards.append(STEP_PENALTY)
+            context = [
+                f"Your previous reasoning (turn {i + 1}): {r}"
+                for i, r in enumerate(self._state.prior_reasoning)
+            ]
+            return DeceitObservation(
+                question=self._current_question,
+                context=context,
+                turn_index=self._state.step_count,
+                max_turns=self._state.max_turns,
+                level=self._state.level,
+                done=False,
+                reward=STEP_PENALTY,
+                metadata={"step_penalty": STEP_PENALTY, "is_final": False},
+            )
+
+        # Terminal turn: grade and compute full reward
         if action.abstain:
             correctness_r, calibration_r = 0.0, 0.0
             grader_method = "abstain"
@@ -113,15 +157,19 @@ class DeceitEnvironment(Environment[DeceitAction, DeceitObservation, DeceitState
             )
             grader_method = result.method
 
+        # Add step penalties already accumulated for non-final turns
         total_reward = correctness_r + calibration_r
         self._state.episode_rewards.append(total_reward)
 
         return DeceitObservation(
-            question="",
-            context=[],
+            question=self._current_question,
+            context=[
+                f"Your previous reasoning (turn {i + 1}): {r}"
+                for i, r in enumerate(self._state.prior_reasoning)
+            ],
             turn_index=self._state.step_count,
-            max_turns=1,
-            level=1,
+            max_turns=self._state.max_turns,
+            level=self._state.level,
             done=True,
             reward=total_reward,
             metadata={
@@ -129,6 +177,8 @@ class DeceitEnvironment(Environment[DeceitAction, DeceitObservation, DeceitState
                 "calibration_reward": calibration_r,
                 "grader_method": grader_method,
                 "correct": correct,
+                "is_final": True,
+                "forced_final": forced_final,
             },
         )
 

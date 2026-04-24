@@ -13,12 +13,19 @@ import re
 import pathlib
 from dataclasses import dataclass
 
+import os
+
 try:
     from openai import OpenAI
 except ImportError:
     OpenAI = None  # type: ignore[assignment,misc]
 
-_DEFAULT_CACHE = pathlib.Path(__file__).parent.parent.parent.parent / "grader_cache.json"
+def _default_cache_path() -> pathlib.Path:
+    """Use DECEIT_GRADER_CACHE env var, falling back to /tmp."""
+    env_path = os.environ.get("DECEIT_GRADER_CACHE")
+    if env_path:
+        return pathlib.Path(env_path)
+    return pathlib.Path("/tmp/deceit_grader_cache.json")
 
 
 @dataclass
@@ -40,10 +47,10 @@ class Grader:
 
     def __init__(
         self,
-        cache_path: str | pathlib.Path = _DEFAULT_CACHE,
+        cache_path: str | pathlib.Path | None = None,
         openai_api_key: str | None = None,
     ) -> None:
-        self._cache_path = pathlib.Path(cache_path)
+        self._cache_path = pathlib.Path(cache_path) if cache_path is not None else _default_cache_path()
         self._openai_api_key = openai_api_key
         self._cache: dict[str, bool] = {}
         if self._cache_path.exists():
