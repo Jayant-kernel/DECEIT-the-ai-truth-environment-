@@ -44,3 +44,4 @@ class DeceitState(State):
     episode_rewards: list[float] = []
     prior_reasoning: list[str] = []
     max_turns: int = 3
+    pressure_shown: bool = False
