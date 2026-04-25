@@ -17,9 +17,9 @@ RUN pip install --no-cache-dir -e . \
 
 ENV DECEIT_GRADER_CACHE=/tmp/deceit_grader_cache.json
 
-EXPOSE 8000
+EXPOSE 7860
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:7860/health || exit 1
 
-CMD ["uvicorn", "deceit_env.server.app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "deceit_env.server.app:app", "--host", "0.0.0.0", "--port", "7860"]
