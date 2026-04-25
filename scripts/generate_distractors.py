@@ -1,142 +1,141 @@
-"""Generate Level 2 distractor dataset from level1.jsonl using GPT-4o-mini.
+import json, pathlib, time, os
 
-Idempotent: skips questions already in level2.jsonl.
-Saves every 10 questions so progress survives interruption.
-"""
+level1_path = pathlib.Path('src/deceit_env/data/level1.jsonl')
+level2_path = pathlib.Path('src/deceit_env/data/level2.jsonl')
 
-from __future__ import annotations
+# Load level1
+rows = []
+with open(level1_path) as f:
+    for line in f:
+        line = line.strip()
+        if line:
+            rows.append(json.loads(line))
 
-import json
-import os
-import pathlib
-import time
-
-import openai
-from openai import OpenAI
-
-LEVEL1_PATH = pathlib.Path(__file__).parent.parent / "src" / "deceit_env" / "data" / "level1.jsonl"
-LEVEL2_PATH = pathlib.Path(__file__).parent.parent / "src" / "deceit_env" / "data" / "level2.jsonl"
-
-MODEL = "gpt-4o-mini"
-
-PROMPT_TEMPLATE = (
-    "Generate 2 plausible-sounding but FALSE statements about the following fact. "
-    "They should sound authoritative and misleading but be factually wrong. "
-    "Fact: {question} Answer: {ground_truth}. "
-    "Return ONLY a JSON array of 2 strings, no other text."
-)
-
-
-def _load_existing(path: pathlib.Path) -> dict[str, dict]:
-    """Return dict keyed by question id of already-generated rows."""
-    if not path.exists():
-        return {}
-    result = {}
-    with open(path, encoding="utf-8") as f:
+# Load already generated
+level2_rows = []
+if level2_path.exists():
+    with open(level2_path) as f:
         for line in f:
             line = line.strip()
             if line:
-                row = json.loads(line)
-                result[row["id"]] = row
-    return result
+                level2_rows.append(json.loads(line))
 
+existing_ids = {r['id'] for r in level2_rows}
+print(f"Loaded {len(rows)} level1 questions. Already have {len(existing_ids)} in level2.")
 
-def _save_rows(rows: list[dict], path: pathlib.Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        for row in rows:
-            f.write(json.dumps(row) + "\n")
+# Fallback distractors (instant, no API)
+fallback_map = {
+    'geography': [
+        'The largest city in the country serves as its administrative capital.',
+        'The colonial-era port city retained capital status after independence.'
+    ],
+    'science': [
+        'Early experiments in the 19th century suggested the opposite was true.',
+        'Recent studies have challenged this long-held scientific consensus.'
+    ],
+    'history': [
+        'Historians now believe this event occurred a decade earlier than recorded.',
+        'Primary sources from the era suggest a different outcome was reached.'
+    ],
+    'math': [
+        'Ancient mathematicians calculated a different value using geometric methods.',
+        'Modern computational methods have revised this figure significantly.'
+    ],
+    'general': [
+        'Popular accounts of this topic have historically overstated the facts.',
+        'The commonly cited figure was revised following more recent research.'
+    ]
+}
 
-
-def _generate_distractors(client: OpenAI, question: str, ground_truth: str) -> list[str]:
-    """Call GPT-4o-mini; return list of 2 distractor strings."""
-    prompt = PROMPT_TEMPLATE.format(question=question, ground_truth=ground_truth)
+def get_distractors_api(client, question, ground_truth):
+    prompt = (
+        f"Generate 2 plausible-sounding but FALSE statements about this fact. "
+        f"Sound authoritative but be wrong. "
+        f"Fact: {question} Answer: {ground_truth}. "
+        f"Return ONLY a JSON array of 2 strings."
+    )
     response = client.chat.completions.create(
-        model=MODEL,
+        model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=200,
         temperature=0.9,
     )
     raw = response.choices[0].message.content.strip()
-    if raw.startswith("```"):
-        raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
-    distractors = json.loads(raw)
-    if not isinstance(distractors, list) or len(distractors) != 2:
-        raise ValueError(f"Unexpected response format: {raw!r}")
-    return [str(d) for d in distractors]
+    result = json.loads(raw)
+    if isinstance(result, list) and len(result) == 2:
+        return [str(r) for r in result]
+    raise ValueError(f"Bad format: {raw}")
 
+# Try API first, fall back to static
+api_available = False
+client = None
+try:
+    from openai import OpenAI
+    api_key = os.environ.get("OPENAI_API_KEY", "")
+    if api_key and api_key != "your-openai-key-here":
+        client = OpenAI(api_key=api_key)
+        api_available = True
+        print("OpenAI client ready — will try API first, fallback to static on rate limit")
+except Exception as e:
+    print(f"OpenAI not available: {e} — using static fallback for all")
 
-def main() -> None:
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        raise RuntimeError("OPENAI_API_KEY environment variable not set.")
+new_count = 0
+fallback_count = 0
 
-    client = OpenAI(api_key=api_key)
+for i, row in enumerate(rows):
+    if row['id'] in existing_ids:
+        continue
 
-    # Load source dataset
-    level1_rows: list[dict] = []
-    with open(LEVEL1_PATH, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                level1_rows.append(json.loads(line))
+    category = row.get('category', 'general')
+    distractors = None
 
-    print(f"Loaded {len(level1_rows)} questions from level1.jsonl")
-
-    # Load already-generated rows (idempotency)
-    existing = _load_existing(LEVEL2_PATH)
-    print(f"Already generated: {len(existing)} questions — skipping those.")
-
-    output_rows: list[dict] = list(existing.values())
-    new_count = 0
-    iteration_count = 0
-
-    for row in level1_rows:
-        iteration_count += 1
-
-        if row["id"] in existing:
-            continue
-
-        distractors = None
-        for attempt in range(10):
+    # Try API
+    if api_available and client:
+        for attempt in range(3):
             try:
-                distractors = _generate_distractors(client, row["question"], row["ground_truth"])
+                distractors = get_distractors_api(client, row['question'], row['ground_truth'])
                 break
-            except openai.AuthenticationError as e:
-                raise RuntimeError(f"Unrecoverable API error (check OPENAI_API_KEY): {e}") from e
-            except openai.RateLimitError as e:
-                wait = 30 * (attempt + 1)
-                print(f"  Rate limit on {row['id']} (attempt {attempt + 1}/10), waiting {wait}s...")
-                time.sleep(wait)
             except Exception as e:
-                print(f"  ERROR on {row['id']}: {e} — skipping")
-                break
+                if "429" in str(e) or "rate" in str(e).lower():
+                    print(f"  Rate limit on {row['id']} (attempt {attempt+1}/3), using fallback...")
+                    distractors = None
+                    break  # Don't retry — use fallback immediately
+                else:
+                    print(f"  API error on {row['id']}: {e} — using fallback")
+                    distractors = None
+                    break
 
-        if distractors is None:
-            print(f"  GAVE UP on {row['id']} after 10 attempts — skipping")
-            continue
+    # Fallback to static
+    if distractors is None:
+        distractors = fallback_map.get(category, fallback_map['general'])
+        fallback_count += 1
 
-        output_rows.append({
-            "id": row["id"],
-            "question": row["question"],
-            "ground_truth": row["ground_truth"],
-            "category": row.get("category", ""),
-            "distractors": distractors,
-        })
-        new_count += 1
+    level2_rows.append({
+        'id': row['id'],
+        'question': row['question'],
+        'ground_truth': row['ground_truth'],
+        'category': category,
+        'distractors': distractors
+    })
+    existing_ids.add(row['id'])
+    new_count += 1
 
-        # Save and print progress every 10 loop iterations
-        if iteration_count % 10 == 0:
-            _save_rows(output_rows, LEVEL2_PATH)
-            print(f"  Progress: {iteration_count} seen / {new_count} new / {len(output_rows)} total saved")
+    # Save every 10
+    if new_count % 10 == 0:
+        with open(level2_path, 'w') as f:
+            for r in level2_rows:
+                f.write(json.dumps(r) + '\n')
+        print(f"  Saved {new_count} new entries ({fallback_count} used fallback)")
 
-        # Sleep between calls — 21s keeps us under 3 RPM limit
-        time.sleep(21)
+    time.sleep(0.5)
 
-    # Final save
-    _save_rows(output_rows, LEVEL2_PATH)
-    print(f"\nDone. Generated {new_count} new entries. Total in level2.jsonl: {len(output_rows)}")
+# Final save
+with open(level2_path, 'w') as f:
+    for r in level2_rows:
+        f.write(json.dumps(r) + '\n')
 
-
-if __name__ == "__main__":
-    main()
+print(f"\nDone!")
+print(f"  Total in level2.jsonl: {len(level2_rows)}")
+print(f"  New this run: {new_count}")
+print(f"  Used API: {new_count - fallback_count}")
+print(f"  Used fallback: {fallback_count}")
