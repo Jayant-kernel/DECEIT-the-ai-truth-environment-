@@ -87,10 +87,10 @@ def main() -> None:
     iteration_count = 0
 
     for i, row in enumerate(level1_rows):
+        iteration_count += 1
+
         if row["id"] in existing:
             continue
-
-        iteration_count += 1
 
         try:
             distractors = _generate_distractors(client, row["question"], row["ground_truth"])
