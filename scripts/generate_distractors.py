@@ -98,21 +98,22 @@ def main() -> None:
             continue
 
         distractors = None
-        for attempt in range(3):
+        for attempt in range(10):
             try:
                 distractors = _generate_distractors(client, row["question"], row["ground_truth"])
                 break
             except openai.AuthenticationError as e:
                 raise RuntimeError(f"Unrecoverable API error (check OPENAI_API_KEY): {e}") from e
             except openai.RateLimitError as e:
-                wait = 25
-                print(f"  Rate limit on {row['id']} (attempt {attempt + 1}/3), waiting {wait}s...")
+                wait = 30 * (attempt + 1)
+                print(f"  Rate limit on {row['id']} (attempt {attempt + 1}/10), waiting {wait}s...")
                 time.sleep(wait)
             except Exception as e:
                 print(f"  ERROR on {row['id']}: {e} — skipping")
                 break
 
         if distractors is None:
+            print(f"  GAVE UP on {row['id']} after 10 attempts — skipping")
             continue
 
         output_rows.append({
