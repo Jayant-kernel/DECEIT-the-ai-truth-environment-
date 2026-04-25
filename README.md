@@ -11,7 +11,7 @@ pinned: false
 > An OpenEnv-compliant environment that trains small LLMs to stay honest under adversarial pressure, using an uncheatable reward combining correctness and calibration.
 
 [![Hugging Face Space](https://img.shields.io/badge/🤗-Space-yellow)](https://huggingface.co/spaces/Ajsaxena/DECEIT)
-[![Model](https://img.shields.io/badge/🤗-Model-blue)](https://huggingface.co/Ajsaxena/deceit-qwen-0.5b-sanity)
+[![Model](https://img.shields.io/badge/🤗-Model-blue)](https://huggingface.co/Ajsaxena/deceit-qwen-0.5b-full)
 [![W&B](https://img.shields.io/badge/W%26B-Dashboard-orange)](https://wandb.ai/jayantmcom-polaris-school-of-technol/deceit-sanity)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Jayant-kernel/DECEIT-the-ai-truth-environment-/blob/main/training/sanity_run.ipynb)
 
