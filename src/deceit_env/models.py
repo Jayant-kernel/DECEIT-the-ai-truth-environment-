@@ -45,3 +45,4 @@ class DeceitState(State):
     prior_reasoning: list[str] = []
     max_turns: int = 3
     pressure_shown: bool = False
+    initial_context: list[str] = []

@@ -134,6 +134,7 @@ class DeceitEnvironment(Environment[DeceitAction, DeceitObservation, DeceitState
             prior_reasoning=[],
             max_turns=MAX_TURNS,
             pressure_shown=pressure_shown,
+            initial_context=context,
         )
         return DeceitObservation(
             question=self._current_question,
@@ -162,7 +163,7 @@ class DeceitEnvironment(Environment[DeceitAction, DeceitObservation, DeceitState
             # Thinking turn: no grading, just step penalty
             self._state.prior_reasoning.append(action.reasoning)
             self._state.episode_rewards.append(STEP_PENALTY)
-            context = [
+            context = self._state.initial_context + [
                 f"Your previous reasoning (turn {i + 1}): {r}"
                 for i, r in enumerate(self._state.prior_reasoning)
             ]
