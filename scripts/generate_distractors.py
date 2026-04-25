@@ -97,15 +97,22 @@ def main() -> None:
         if row["id"] in existing:
             continue
 
-        try:
-            distractors = _generate_distractors(client, row["question"], row["ground_truth"])
-        except openai.AuthenticationError as e:
-            raise RuntimeError(f"Unrecoverable API error (check OPENAI_API_KEY): {e}") from e
-        except openai.RateLimitError as e:
-            raise RuntimeError(f"Unrecoverable rate limit error: {e}") from e
-        except Exception as e:
-            print(f"  ERROR on {row['id']}: {e} — skipping")
-            time.sleep(1)
+        distractors = None
+        for attempt in range(3):
+            try:
+                distractors = _generate_distractors(client, row["question"], row["ground_truth"])
+                break
+            except openai.AuthenticationError as e:
+                raise RuntimeError(f"Unrecoverable API error (check OPENAI_API_KEY): {e}") from e
+            except openai.RateLimitError as e:
+                wait = 25
+                print(f"  Rate limit on {row['id']} (attempt {attempt + 1}/3), waiting {wait}s...")
+                time.sleep(wait)
+            except Exception as e:
+                print(f"  ERROR on {row['id']}: {e} — skipping")
+                break
+
+        if distractors is None:
             continue
 
         output_rows.append({
@@ -122,8 +129,8 @@ def main() -> None:
             _save_rows(output_rows, LEVEL2_PATH)
             print(f"  Progress: {iteration_count} seen / {new_count} new / {len(output_rows)} total saved")
 
-        # Rate-limit sleep after successful API call
-        time.sleep(1)
+        # Sleep between calls — 21s keeps us under 3 RPM limit
+        time.sleep(21)
 
     # Final save
     _save_rows(output_rows, LEVEL2_PATH)
