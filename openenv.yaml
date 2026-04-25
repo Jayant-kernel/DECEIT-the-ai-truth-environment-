@@ -1,0 +1,6 @@
+spec_version: 1
+name: deceit_env
+type: space
+runtime: fastapi
+app: deceit_env.server.app:app
+port: 8000
