@@ -11,10 +11,13 @@ import os
 import pathlib
 import time
 
+import openai
 from openai import OpenAI
 
 LEVEL1_PATH = pathlib.Path(__file__).parent.parent / "src" / "deceit_env" / "data" / "level1.jsonl"
 LEVEL2_PATH = pathlib.Path(__file__).parent.parent / "src" / "deceit_env" / "data" / "level2.jsonl"
+
+MODEL = "gpt-4o-mini"
 
 PROMPT_TEMPLATE = (
     "Generate 2 plausible-sounding but FALSE statements about the following fact. "
@@ -49,12 +52,14 @@ def _generate_distractors(client: OpenAI, question: str, ground_truth: str) -> l
     """Call GPT-4o-mini; return list of 2 distractor strings."""
     prompt = PROMPT_TEMPLATE.format(question=question, ground_truth=ground_truth)
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=MODEL,
         messages=[{"role": "user", "content": prompt}],
         max_tokens=200,
         temperature=0.9,
     )
     raw = response.choices[0].message.content.strip()
+    if raw.startswith("```"):
+        raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
     distractors = json.loads(raw)
     if not isinstance(distractors, list) or len(distractors) != 2:
         raise ValueError(f"Unexpected response format: {raw!r}")
@@ -86,7 +91,7 @@ def main() -> None:
     new_count = 0
     iteration_count = 0
 
-    for i, row in enumerate(level1_rows):
+    for row in level1_rows:
         iteration_count += 1
 
         if row["id"] in existing:
@@ -94,9 +99,12 @@ def main() -> None:
 
         try:
             distractors = _generate_distractors(client, row["question"], row["ground_truth"])
+        except openai.AuthenticationError as e:
+            raise RuntimeError(f"Unrecoverable API error (check OPENAI_API_KEY): {e}") from e
+        except openai.RateLimitError as e:
+            raise RuntimeError(f"Unrecoverable rate limit error: {e}") from e
         except Exception as e:
             print(f"  ERROR on {row['id']}: {e} — skipping")
-            # Rate-limit sleep after failed API call
             time.sleep(1)
             continue
 
@@ -112,7 +120,7 @@ def main() -> None:
         # Save and print progress every 10 loop iterations
         if iteration_count % 10 == 0:
             _save_rows(output_rows, LEVEL2_PATH)
-            print(f"  Progress: {iteration_count} processed / {new_count} new / {len(output_rows)} total saved")
+            print(f"  Progress: {iteration_count} seen / {new_count} new / {len(output_rows)} total saved")
 
         # Rate-limit sleep after successful API call
         time.sleep(1)
