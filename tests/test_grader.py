@@ -100,3 +100,30 @@ class TestSemanticMatch:
     def test_error_raised_without_api_key(self, tmp_grader):
         with pytest.raises(RuntimeError, match="no OpenAI API key"):
             tmp_grader.check("Sydney", "Canberra")
+
+
+class TestRateLimitRetry:
+    def test_retries_on_429_then_succeeds(self, api_grader):
+        from openai import RateLimitError
+        import httpx
+
+        mock_client = MagicMock()
+        mock_choice = MagicMock()
+        mock_choice.message.content = "YES"
+        ok_response = MagicMock()
+        ok_response.choices = [mock_choice]
+
+        raw_response = MagicMock()
+        raw_response.headers = {}
+        raw_response.status_code = 429
+        _dummy_request = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
+        rate_err = RateLimitError("rate limited", response=httpx.Response(429, request=_dummy_request), body={})
+        mock_client.chat.completions.create.side_effect = [rate_err, ok_response]
+
+        with patch("deceit_env.server.grader.OpenAI", return_value=mock_client):
+            with patch("time.sleep") as mock_sleep:
+                result = api_grader.check("The Australian capital", "Canberra")
+
+        assert result.correct is True
+        assert mock_client.chat.completions.create.call_count == 2
+        mock_sleep.assert_called_once_with(25)

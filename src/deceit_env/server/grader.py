@@ -11,6 +11,7 @@ import hashlib
 import json
 import re
 import pathlib
+import time
 from dataclasses import dataclass
 
 import os
@@ -93,12 +94,26 @@ class Grader:
             f"Is '{answer}' semantically equivalent to '{ground_truth}'? "
             "Reply YES or NO only."
         )
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=5,
-            temperature=0,
-        )
+
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=5,
+                    temperature=0,
+                )
+                break
+            except Exception as e:
+                if "429" in str(e) or "RateLimitError" in type(e).__name__:
+                    print(f"[grader] Rate limit hit (attempt {attempt + 1}/{max_retries}), waiting 25s...")
+                    time.sleep(25)
+                    if attempt == max_retries - 1:
+                        raise
+                else:
+                    raise
+
         verdict = response.choices[0].message.content.strip().upper()
         correct = verdict.startswith("YES")
 
