@@ -84,15 +84,20 @@ def main() -> None:
 
     output_rows: list[dict] = list(existing.values())
     new_count = 0
+    iteration_count = 0
 
     for i, row in enumerate(level1_rows):
         if row["id"] in existing:
             continue
 
+        iteration_count += 1
+
         try:
             distractors = _generate_distractors(client, row["question"], row["ground_truth"])
         except Exception as e:
             print(f"  ERROR on {row['id']}: {e} — skipping")
+            # Rate-limit sleep after failed API call
+            time.sleep(1)
             continue
 
         output_rows.append({
@@ -104,12 +109,12 @@ def main() -> None:
         })
         new_count += 1
 
-        # Save every 10 new entries
-        if new_count % 10 == 0:
+        # Save and print progress every 10 loop iterations
+        if iteration_count % 10 == 0:
             _save_rows(output_rows, LEVEL2_PATH)
-            print(f"  Progress: {new_count} new / {len(output_rows)} total saved")
+            print(f"  Progress: {iteration_count} processed / {new_count} new / {len(output_rows)} total saved")
 
-        # Rate-limit sleep
+        # Rate-limit sleep after successful API call
         time.sleep(1)
 
     # Final save
