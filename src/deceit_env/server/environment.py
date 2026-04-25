@@ -27,6 +27,9 @@ from deceit_env.server.grader import Grader
 _DEFAULT_DATASET = (
     pathlib.Path(__file__).parent.parent / "data" / "level1.jsonl"
 )
+_DEFAULT_LEVEL2_DATASET = (
+    pathlib.Path(__file__).parent.parent / "data" / "level2.jsonl"
+)
 
 STEP_PENALTY = -0.05
 MAX_TURNS = 3
@@ -62,11 +65,14 @@ class DeceitEnvironment(Environment[DeceitAction, DeceitObservation, DeceitState
     def __init__(
         self,
         dataset_path: str | pathlib.Path = _DEFAULT_DATASET,
+        level2_dataset_path: str | pathlib.Path = _DEFAULT_LEVEL2_DATASET,
         grader: Optional[Grader] = None,
         seed: Optional[int] = None,
     ) -> None:
         super().__init__()
         self._dataset = self._load_dataset(pathlib.Path(dataset_path))
+        self._level2_dataset_path = pathlib.Path(level2_dataset_path)
+        self._level2_dataset: list[dict] | None = None
         self._grader = grader or Grader(
             openai_api_key=os.environ.get("OPENAI_API_KEY")
         )
@@ -82,18 +88,28 @@ class DeceitEnvironment(Environment[DeceitAction, DeceitObservation, DeceitState
         self,
         seed: Optional[int] = None,
         episode_id: Optional[str] = None,
+        level: int = 1,
         **kwargs,
     ) -> DeceitObservation:
         """Pick a random question and initialize a new episode."""
         if seed is not None:
             self._rng = random.Random(seed)
 
-        question_row = self._rng.choice(self._dataset)
+        if level == 2:
+            dataset = self._get_level2_dataset()
+            question_row = self._rng.choice(dataset)
+            distractors: list[str] = list(question_row.get("distractors", []))
+            self._rng.shuffle(distractors)
+            context = distractors
+        else:
+            question_row = self._rng.choice(self._dataset)
+            context = []
+
         self._current_question = question_row["question"]
         self._state = DeceitState(
             episode_id=episode_id or str(uuid.uuid4()),
             step_count=0,
-            level=1,
+            level=level,
             ground_truth=question_row["ground_truth"],
             current_question_id=question_row["id"],
             episode_rewards=[],
@@ -102,10 +118,10 @@ class DeceitEnvironment(Environment[DeceitAction, DeceitObservation, DeceitState
         )
         return DeceitObservation(
             question=self._current_question,
-            context=[],
+            context=context,
             turn_index=0,
             max_turns=MAX_TURNS,
-            level=1,
+            level=level,
         )
 
     def step(
@@ -206,4 +222,26 @@ class DeceitEnvironment(Environment[DeceitAction, DeceitObservation, DeceitState
                     rows.append(json.loads(line))
         if not rows:
             raise ValueError(f"Dataset at {path} is empty.")
+        return rows
+
+    def _get_level2_dataset(self) -> list[dict]:
+        if self._level2_dataset is None:
+            self._level2_dataset = self._load_level2_dataset(self._level2_dataset_path)
+        return self._level2_dataset
+
+    @staticmethod
+    def _load_level2_dataset(path: pathlib.Path) -> list[dict]:
+        if not path.exists():
+            raise FileNotFoundError(
+                f"Level 2 dataset not found at {path}. "
+                "Run scripts/generate_distractors.py first."
+            )
+        rows = []
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    rows.append(json.loads(line))
+        if not rows:
+            raise ValueError(f"Level 2 dataset at {path} is empty.")
         return rows
