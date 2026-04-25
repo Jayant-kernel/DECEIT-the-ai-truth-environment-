@@ -93,7 +93,6 @@ def main() -> None:
     api_available = False
     client = None
     try:
-        import openai
         from openai import OpenAI
         api_key = os.environ.get("OPENAI_API_KEY", "")
         if api_key and "your-openai-key" not in api_key:
@@ -135,7 +134,8 @@ def main() -> None:
             _save_rows(output_rows, LEVEL3_PATH)
             print(f"  Progress: {iteration_count} seen / {new_count} new / {fallback_count} fallback")
 
-        time.sleep(0.5)
+        if api_available:
+            time.sleep(0.5)
 
     _save_rows(output_rows, LEVEL3_PATH)
     print(f"\nDone!")
