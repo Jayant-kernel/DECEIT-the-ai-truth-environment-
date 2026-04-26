@@ -10,6 +10,15 @@
 
 ---
 
+## Resources
+- 🤗 [Live Environment](https://huggingface.co/spaces/Ajsaxena/DECEIT)
+- 🤗 [Trained Model](https://huggingface.co/Ajsaxena/deceit-qwen-0.5b-full)
+- 📊 [Training Logs](https://wandb.ai/jayantmcom-polaris-school-of-technol/deceit-full)
+- 💻 [Training Notebook](https://colab.research.google.com/github/Jayant-kernel/DECEIT-the-ai-truth-environment-/blob/main/training/sanity_run.ipynb)
+- 🎥 [Video Explanation](YOUR_YOUTUBE_LINK)
+
+---
+
 ## The Problem
 
 When LLMs are trained with RL, they learn to chase reward — not truth. Models become confidently wrong, sycophantic, and reward-hacking. No open-source RL environment exists specifically for training honesty.
