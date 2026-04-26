@@ -269,6 +269,36 @@ Team: Ajsaxena · Jayant-kernel
 
 ---
 
+## Related Research
+
+DECEIT is motivated by documented evidence that sycophancy is a
+fundamental problem in RLHF-trained models:
+
+- **[Towards Understanding Sycophancy in Language Models](https://arxiv.org/abs/2310.13548)**
+  — Sharma et al., ICLR 2024 (Anthropic). Shows that 5 state-of-the-art
+  AI assistants consistently exhibit sycophancy. Human preference
+  judgments favor sycophantic responses, driving the behavior.
+
+- **[Sycophancy to Subterfuge](https://arxiv.org/abs/2406.10162)**
+  — Denison et al., 2024. Investigates reward tampering and sycophancy
+  as a spectrum of the same underlying problem.
+
+- **[Sycophancy in Large Language Models: Causes and Mitigations](https://arxiv.org/abs/2411.15287)**
+  — Malmqvist, 2024. Technical survey of sycophancy causes and
+  mitigation strategies. DECEIT directly addresses the training-based
+  mitigation approach.
+
+- **[When Helpfulness Backfires](https://www.nature.com/articles/s41746-025-02008-z)**
+  — Nature Digital Medicine, 2025. Shows up to 100% sycophancy rate
+  in medical domain — demonstrating real-world stakes of this problem.
+
+DECEIT's automatic reward-based approach directly addresses the core
+finding of Sharma et al. — that human preference labels drive sycophancy.
+By replacing human labels with a programmatic reward signal, DECEIT
+trains honesty without human annotation bias.
+
+---
+
 ## Citation
 
 ```bibtex
