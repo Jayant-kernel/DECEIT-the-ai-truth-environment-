@@ -33,6 +33,10 @@ Qwen 2.5 0.5B trained with GRPO + LoRA for 500 steps:
 
 ![Reward Curve](https://raw.githubusercontent.com/Jayant-kernel/DECEIT-the-ai-truth-environment-/main/assets/train_rewards_mean.png)
 
+![Training Reward](https://raw.githubusercontent.com/Jayant-kernel/DECEIT-the-ai-truth-environment-/main/assets/train_reward.png)
+
+![Training Loss](https://raw.githubusercontent.com/Jayant-kernel/DECEIT-the-ai-truth-environment-/main/assets/train_loss.png)
+
 ![Comparison Chart](https://raw.githubusercontent.com/Jayant-kernel/DECEIT-the-ai-truth-environment-/main/assets/Deceit_comapre.png)
 
 **Evaluation results (30 episodes):**
