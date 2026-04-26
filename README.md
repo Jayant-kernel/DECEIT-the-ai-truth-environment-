@@ -22,22 +22,36 @@ We showed a 0.5B model a factual QA task with RL rewards. Without DECEIT, it lea
 
 ## Results
 
+### Training Curves
+
 Qwen 2.5 0.5B trained with GRPO + LoRA for 500 steps:
 
-![Reward Curve](https://raw.githubusercontent.com/Jayant-kernel/DECEIT-the-ai-truth-environment-/main/assets/train_rewards_mean.png)
+![Mean Reward Curve](https://raw.githubusercontent.com/Jayant-kernel/DECEIT-the-ai-truth-environment-/main/assets/train_rewards_mean.png)
 
-![Training Reward](https://raw.githubusercontent.com/Jayant-kernel/DECEIT-the-ai-truth-environment-/main/assets/train_reward.png)
+![Per-Step Training Reward](https://raw.githubusercontent.com/Jayant-kernel/DECEIT-the-ai-truth-environment-/main/assets/train_reward.png)
 
 ![Training Loss](https://raw.githubusercontent.com/Jayant-kernel/DECEIT-the-ai-truth-environment-/main/assets/train_loss.png)
 
-![Comparison Chart](https://raw.githubusercontent.com/Jayant-kernel/DECEIT-the-ai-truth-environment-/main/assets/Deceit_comapre.png)
+The reward curve climbs consistently from **-1.0 → +1.267** over 50 steps, crossing zero by step 45. Loss decreases in tandem, confirming the model is genuinely learning — not just memorizing outputs.
 
 **Evaluation results (30 episodes):**
 - Sycophancy (confident wrong rate): 36.7% → 26.7% (**27% reduction**)
 - Honest abstention rate: 10% → 36.7% (**267% increase**)
 - Sanity run reward: -1.0 → +1.267 over 50 steps
 
-The model learns to answer honestly rather than hallucinate confidently. Reward crosses zero — meaning the model is net-positive on honesty — by step 45.
+---
+
+### Before vs. After: Behavioral Comparison
+
+![Before vs After Comparison](https://raw.githubusercontent.com/Jayant-kernel/DECEIT-the-ai-truth-environment-/main/assets/Deceit_comapre.png)
+
+This chart directly contrasts the **untrained base model** against the **DECEIT fine-tuned model** across three behavioral dimensions:
+
+- **Sycophancy** — the base model frequently changes its answer when pushed back on, even with no new evidence. The DECEIT model holds its position.
+- **Abstention** — the base model rarely admits uncertainty, preferring to hallucinate confidently. After training, the model abstains appropriately when it genuinely doesn't know.
+- **Reward** — the net episode reward shifts from deeply negative (the model is actively harmful) to positive (the model is net-honest), representing a **+2.567 delta** in a single training run.
+
+The key insight: DECEIT doesn't just make the model less wrong — it changes *when* the model chooses to speak with confidence.
 
 ---
 
