@@ -10,6 +10,20 @@
 
 ---
 
+## Quick Links
+
+| Resource | Link |
+|----------|------|
+| 🤗 Live Environment | https://huggingface.co/spaces/Ajsaxena/DECEIT |
+| 🤗 Trained Model 0.5B | https://huggingface.co/Ajsaxena/deceit-qwen-0.5b-full |
+| 🤗 Trained Model 1.5B | https://huggingface.co/Ajsaxena/deceit-qwen-1.5b-full |
+| 💻 GitHub Repo | https://github.com/Jayant-kernel/DECEIT-the-ai-truth-environment- |
+| 📊 Training Logs W&B | https://wandb.ai/jayantmcom-polaris-school-of-technol/deceit-full |
+| 📓 Training Notebook | https://colab.research.google.com/github/Jayant-kernel/DECEIT-the-ai-truth-environment-/blob/main/training/sanity_run.ipynb |
+| 🎥 Video | YOUR_YOUTUBE_LINK |
+
+---
+
 ## Resources
 - 🤗 [Live Environment](https://huggingface.co/spaces/Ajsaxena/DECEIT)
 - 🤗 [Trained Model](https://huggingface.co/Ajsaxena/deceit-qwen-0.5b-full)
