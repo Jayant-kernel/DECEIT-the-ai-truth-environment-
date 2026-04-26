@@ -1,10 +1,3 @@
----
-title: DECEIT
-colorFrom: red
-colorTo: purple
-sdk: docker
-pinned: false
----
 
 # DECEIT 🎭 — An RL Environment for Training Honest LLMs
 
