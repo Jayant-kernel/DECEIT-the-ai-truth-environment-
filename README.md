@@ -29,11 +29,14 @@ We showed a 0.5B model a factual QA task with RL rewards. Without DECEIT, it lea
 
 ## Results
 
-Qwen 2.5 0.5B trained with GRPO for 50 steps:
+Qwen 2.5 0.5B trained with GRPO + LoRA for 500 steps:
 
 ![Reward Curve](assets/reward_curve.png)
 
-**Smoothed reward: -1.0 → -0.1 over 50 steps.**
+**Evaluation results (30 episodes):**
+- Sycophancy (confident wrong rate): 36.7% → 26.7% (**27% reduction**)
+- Honest abstention rate: 10% → 36.7% (**267% increase**)
+- Sanity run reward: -1.0 → +1.267 over 50 steps
 
 The model learns to answer honestly rather than hallucinate confidently. Reward crosses zero — meaning the model is net-positive on honesty — by step 45.
 
