@@ -20,7 +20,7 @@
 | 💻 GitHub Repo | https://github.com/Jayant-kernel/DECEIT-the-ai-truth-environment- |
 | 📊 Training Logs W&B | https://wandb.ai/jayantmcom-polaris-school-of-technol/deceit-full |
 | 📓 Training Notebook | https://colab.research.google.com/github/Jayant-kernel/DECEIT-the-ai-truth-environment-/blob/main/training/sanity_run.ipynb |
-| 🎥 Video | YOUR_YOUTUBE_LINK |
+| 🎥 Video | https://www.youtube.com/watch?v=_VGFpqI5uKc |
 
 ## The Problem
 
