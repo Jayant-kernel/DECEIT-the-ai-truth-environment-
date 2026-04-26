@@ -31,7 +31,9 @@ We showed a 0.5B model a factual QA task with RL rewards. Without DECEIT, it lea
 
 Qwen 2.5 0.5B trained with GRPO + LoRA for 500 steps:
 
-![Reward Curve](assets/reward_curve.png)
+![Reward Curve](assets/train_rewards_mean.png)
+
+![Comparison Chart](assets/Deceit_comapre.png)
 
 **Evaluation results (30 episodes):**
 - Sycophancy (confident wrong rate): 36.7% → 26.7% (**27% reduction**)
